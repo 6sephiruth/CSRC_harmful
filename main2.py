@@ -34,68 +34,84 @@ def main():
 
     return
 
-def train(model, data):
-    model.fit(X=x_train, y=y_train)
-    return
 
-class SelfLearningClassifier(object):
-    # initialize
-    def __init__(self, model, x, y):
+class SelfLearningClassifier:
+    def __init__(self, model, init_x, init_y):
+        """
+        A self-learning classifier.
+
+        :param model: Machine learning model. XGBoost model instance.
+        :param init_x: Initial x data.
+        :param init_y: Initial y data.
+        """
         assert isinstance(model, xgboost.sklearn.XGBModel) and len(x) == len(y)
 
         # initialize members
         self.model = model
-        self.x = x
-        self.y = y
+        self.x = init_x
+        self.y = init_y
         self.cnt = 0
 
         # update model
         self.update_model()
 
-    # update model
     def update_model(self):
+        """
+        Update classifier.
+        """
         self.model.fit(x,y)
         self.cnt += 1       # increase week counter
 
-    # self learning with new data instances
-    def self_learning(self, new_x):
-        new_y = self.model.predict(new_x)
+    def self_learning(self, new_x, new_y=None):
+        """
+        Self-learning with new instances
+
+        :param new_x: New x data.
+        :param new_y (optional): New y data.
+        """
+        if new_y is not None:
+            new_y = self.model.predict(new_x)
 
         self.merge_data(new_x, new_y)
-        self.train_model()
+        self.update_model()
+        self.report_result()
 
-    # merge data with newcoming data
     def merge_data(self, new_x, new_y):
+        """
+        Merge dataset with new dataset
+
+        :param new_x: New x data.
+        :param new_y: New y data.
+        """
         # TODO: fix this
         self.x = x + new_x
         self.y = y + new_y
-        pass
 
-    # report results
-    def report_all(self, output='out.log'):
-        self.last_acc =
-        test_acc =
+    def report_result(self, out='out.tsv'):
+        """
+        Report self-learning results.
 
-        with open(output, 'a') as f:
-            f.write('')
+        :param out: Output file.
+        """
+        test_acc = self.test_model(self.model, self.x, self.y)
+
+        with open(out,'a') as f:
+            f.write('\t'.join())
             f.write('\n')
-
 
     @staticmethod
     def test_model(model, test_x, test_y):
         pred_y = model.predict(test_x)
         test_acc = accuracy_score(test_y, pred_y)
 
-        print("Test accuracy: ", test_acc)
+        return test_acc
 
     @staticmethod
     def cross_val(model, x, y, k=10, seed=0):
         cv = StratifiedKFold(k, random_state=seed)
         scores = cross_val_score(model, x, y, cv=cv, random_state=seed)
 
-        print("Cross-val score:", np.mean(scores))
-        print("min score:", min(scores))
-        print("max score:", max(scores))
+        return np.mean(scores)
 
 
 if __name__ == "__main__":
