@@ -1,15 +1,20 @@
 import os
 import pandas as pd
 import numpy as np
+import glob
 
 import shap
 from shap import Explanation, Cohorts
+from shap.plots._labels import labels
+from shap.plots._utils import convert_ordering
+from shap.utils import ordinal_str
 
-def createFolder(dir_path):
+def create_folder(dir_path):
     '''
     폴더 만들기
     '''
     os.makedirs(dir_path, exist_ok = True)
+
 
 def load_dataset_list(dir_path):
     '''
@@ -17,14 +22,16 @@ def load_dataset_list(dir_path):
     input: dir_path
     output: [./A, ./B, ./C]
     '''
-    dataset_list = []
+    return sorted(glob.glob(f'{dir_path}/*.csv'))
+    #dataset_list = []
 
-    for (root, _, files) in os.walk(dir_path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            dataset_list.append(file_path)
+    #for (root, _, files) in os.walk(dir_path):
+    #    for file in files:
+    #        file_path = os.path.join(root, file)
+    #        dataset_list.append(file_path)
 
-    return dataset_list
+    #return dataset_list
+
 
 def load_total_dataframe(file_list):
     '''
@@ -43,6 +50,7 @@ def load_total_dataframe(file_list):
 
     return total_dataframe
 
+
 def distribution_dataset(normal_dataset, gamble_dataset):
 
     normal_dataset["correct_label"] = 0
@@ -54,7 +62,7 @@ def distribution_dataset(normal_dataset, gamble_dataset):
     total_columns = total_dataset.columns
 
     total_dataset = np.where(total_dataset>0, 1, 0)
-    
+
     total_dataset = pd.DataFrame(total_dataset, columns=total_columns)
     total_dataset = total_dataset.sample(frac=1)
 
@@ -71,6 +79,7 @@ def distribution_dataset(normal_dataset, gamble_dataset):
 
     return (x_train, y_train), (x_test, y_test), total_columns
 
+
 def report_shap(x_train, total_columns, XGB_model):
 
     explainer = shap.Explainer(XGB_model)
@@ -81,34 +90,21 @@ def report_shap(x_train, total_columns, XGB_model):
     # 출력: shap_name, shap_value 기여도 0 이상만 출력
     #####################
 
-    from shap import Explanation, Cohorts
-    
-    clustering=None
-    clustering_cutoff=0.5
-    max_display= x_train.shape[1]
-    order=Explanation.abs
-    clustering=None
-    clustering_cutoff=0.5
-    merge_cohorts=False
-    show_data="auto"
-    show=True
-    import warnings
-    import matplotlib.pyplot as pl
-    from shap import Explanation, Cohorts
-    from shap.plots._labels import labels
-    from shap.plots._utils import convert_ordering
-    # convert_color, merge_nodes, get_sort_order, sort_inds, 
-    from shap.plots import colors
-    from shap.utils import format_value, ordinal_str
+    clustering = None
+    clustering_cutoff = 0.5
+    max_display = x_train.shape[1]
+    order = Explanation.abs
+    merge_cohorts = False
+    show_data = "auto"
+    show = True
+
     if isinstance(shap_values, Explanation):
         cohorts = {"": shap_values}
     elif isinstance(shap_values, Cohorts):
         cohorts = shap_values.cohorts
     else:
         assert isinstance(shap_values, dict), "You must pass an Explanation object, Cohorts object, or dictionary to bar plot!"
-    # unpack our list of Explanation objects we need to plot
-    cohort_labels = list(cohorts.keys())
-    cohort_exps = list(cohorts.values())
+
 
     # unpack our list of Explanation objects we need to plot
     cohort_labels = list(cohorts.keys())
@@ -225,13 +221,13 @@ def report_shap(x_train, total_columns, XGB_model):
                 feature_names_new.append(feature_names[inds[max_ind]] + " + %d other features" % (len(inds)-1))
     feature_names = feature_names_new
 
-    attribution_name = []    
+    attribution_name = []
     attribution_value = []
 
     for i in range(len(values)):
         for j in range(len(y_pos)):
             ind = feature_order[j]
-        
+
             attribution_value.append(values[i,ind])
 
     for find_value_zero in range(x_train.shape[1]):
@@ -240,6 +236,5 @@ def report_shap(x_train, total_columns, XGB_model):
 
         if attribution_value[find_value_zero] == 0:
             break
-
 
     return attribution_name[:find_value_zero], attribution_value[:find_value_zero]

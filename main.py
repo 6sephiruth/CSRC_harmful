@@ -1,9 +1,3 @@
-import os
-import schedule
-import time
-import pandas as pd
-from datetime import datetime
-import tensorflow as tf
 import shutil
 
 from utils import *
@@ -12,17 +6,15 @@ import xgboost
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import cross_val_score
 
-TF_ENABLE_ONEDNN_OPTS = 0
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
-
-TF_ENABLE_ONEDNN_OPTS = 0
+# GPU-related settings: not relative now
+#import tensorflow as tf
+#TF_ENABLE_ONEDNN_OPTS = 0
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # enable memory growth
-physical_devices = tf.config.list_physical_devices('GPU')
-
-for d in physical_devices:
-    tf.config.experimental.set_memory_growth(d, True)
+#physical_devices = tf.config.list_physical_devices('GPU')
+#for d in physical_devices:
+#    tf.config.experimental.set_memory_growth(d, True)
 
 # 실험 결과 리스트 PATH
 experiment_path = './report_experiment/'
@@ -33,7 +25,6 @@ gamble_list = './dataset/week_gamble/'
 stock_normal_list = './dataset/total_normal'
 stock_gamble_list = './dataset/total_gamble'
 
-
 normal_file_list = load_dataset_list(normal_list)
 gamble_file_list = load_dataset_list(gamble_list)
 
@@ -42,6 +33,8 @@ folder_name = gamble_file_list[0][-10:-4]
 normal_total_dataset = load_total_dataframe(normal_file_list)
 gamble_total_dataset = load_total_dataframe(gamble_file_list)
 
+# create total_gamble folder
+create_folder(stock_gamble_list)
 
 while True:
 
@@ -51,7 +44,7 @@ while True:
     x_test, y_test = test
 
     one_week_model = xgboost.XGBRFClassifier().fit(X=x_train, y=y_train)
-    
+
     y_pred = one_week_model.predict(x_train)
     acc_train = accuracy_score(y_pred, y_train)
 
@@ -59,7 +52,7 @@ while True:
     acc_test = accuracy_score(y_pred, y_test)
 
     if acc_test >= acc_train:
-        createFolder(experiment_path + folder_name)
+        create_folder(experiment_path + folder_name)
         one_week_model.save_model(experiment_path + folder_name + '/short_model.model')
 
         # cross_validation
@@ -95,7 +88,7 @@ while True:
     lite_acc_test = accuracy_score(y_pred, y_test)
 
     if lite_acc_test >= lite_acc_train :
-        createFolder(experiment_path + folder_name)
+        create_folder(experiment_path + folder_name)
         one_week_lite_model.save_model(experiment_path + folder_name + '/Lite_short_model.model')
 
         # cross_validation
@@ -107,9 +100,9 @@ while True:
         break
 
 # 파일 이동
-get_files = os.listdir(gamble_list)
-for g in get_files:
-    shutil.move(gamble_list + g, stock_gamble_list)
+#get_files = os.listdir(gamble_list)
+#for g in get_files:
+#    shutil.move(gamble_list + g, stock_gamble_list)
 
 ########### Total Model 생성
 
@@ -135,7 +128,7 @@ while True:
     total_acc_test = accuracy_score(y_pred, y_test)
 
     if total_acc_test >= total_acc_train:
-        createFolder(experiment_path + folder_name)
+        create_folder(experiment_path + folder_name)
         total_model.save_model(experiment_path + folder_name + '/total_model.model')
 
         # cross_validation
@@ -146,7 +139,7 @@ while True:
 
         break
 
-total_shap_name, total_shap_value = report_shap(x_train, total_columns,  total_model)
+total_shap_name, total_shap_value = report_shap(x_train, total_columns, total_model)
 
 ###############################
 
@@ -172,7 +165,7 @@ while True:
     total_lite_acc_test = accuracy_score(y_pred, y_test)
 
     if total_lite_acc_test >= total_lite_acc_train :
-        createFolder(experiment_path + folder_name)
+        create_folder(experiment_path + folder_name)
         Total_lite_model.save_model(experiment_path + folder_name + '/Total_Lite_model.model')
 
         # cross_validation
@@ -255,7 +248,7 @@ cross_acc = pd.DataFrame(cross_acc)
 xlxs_dir = experiment_path + folder_name + '/shap_report.xlsx'
 
 with pd.ExcelWriter(xlxs_dir) as writer:
-    
+
     recent_acc.to_excel(writer, sheet_name = 'recent_acc')
 
     short_shap.to_excel(writer, sheet_name = 'recent_shap')
