@@ -1,5 +1,3 @@
 __pycache__
 report_experiment
-
-# added for now
-dataset/*/*.csv
+trained_models

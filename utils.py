@@ -5,11 +5,19 @@ import pickle
 import pandas as pd
 import numpy as np
 
+import matplotlib
+matplotlib.use('pdf')
+import matplotlib.pyplot as plt
+
+# requires nanum gothic font to be installed
+plt.rcParams['font.family'] = 'NanumGothicOtf'
+
 import shap
 from shap import Explanation, Cohorts
 from shap.plots._labels import labels
 from shap.plots._utils import convert_ordering
 from shap.utils import ordinal_str
+
 
 def create_folder(dir_path):
     '''
@@ -25,14 +33,6 @@ def load_dataset_list(dir_path):
     output: [./A, ./B, ./C]
     '''
     return sorted(glob.glob(f'{dir_path}/*.csv'))
-    #dataset_list = []
-
-    #for (root, _, files) in os.walk(dir_path):
-    #    for file in files:
-    #        file_path = os.path.join(root, file)
-    #        dataset_list.append(file_path)
-
-    #return dataset_list
 
 
 def load_total_dataframe(file_list):
