@@ -1,7 +1,9 @@
 import os
+import glob
+import pickle
+
 import pandas as pd
 import numpy as np
-import glob
 
 import shap
 from shap import Explanation, Cohorts
@@ -40,13 +42,18 @@ def load_total_dataframe(file_list):
     '''
     empty_dataframe = pd.DataFrame()
 
-    for each_file in file_list:
+    all_files = [pd.read_csv(f) for f in file_list]
+    all_files = [pd.DataFrame(f.drop('Unnamed: 0', axis=1)) for f in all_files]
 
-        each_file = pd.read_csv(each_file)
-        each_file = pd.DataFrame(each_file.drop('Unnamed: 0', axis=1))
-        empty_dataframe = pd.concat([empty_dataframe, each_file])
+    #for each_file in file_list:
 
-    total_dataframe = empty_dataframe
+    #    each_file = pd.read_csv(each_file)
+    #    each_file = pd.DataFrame(each_file.drop('Unnamed: 0', axis=1))
+    #    empty_dataframe = pd.concat([empty_dataframe, each_file])
+
+    #total_dataframe = empty_dataframe
+
+    total_dataframe = pd.concat(all_files)
 
     return total_dataframe
 
