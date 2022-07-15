@@ -45,17 +45,28 @@ def load_total_dataframe(file_list):
     all_files = [pd.read_csv(f) for f in file_list]
     all_files = [pd.DataFrame(f.drop('Unnamed: 0', axis=1)) for f in all_files]
 
-    #for each_file in file_list:
-
-    #    each_file = pd.read_csv(each_file)
-    #    each_file = pd.DataFrame(each_file.drop('Unnamed: 0', axis=1))
-    #    empty_dataframe = pd.concat([empty_dataframe, each_file])
-
-    #total_dataframe = empty_dataframe
-
     total_dataframe = pd.concat(all_files)
 
     return total_dataframe
+
+
+# threshold that yields best accuracy
+def acc_thresh(labels, score):
+    A = list(zip(labels, score))
+    A = sorted(A, key=lambda x: x[1])
+    total = len(A)
+    tp = len([1 for x in A if x[0]==1])
+    tn = 0
+    th_acc = []
+    for x in A:
+        th = x[1]
+        if x[0] == 1:
+            tp -= 1
+        else:
+            tn += 1
+        acc = (tp + tn) / total
+        th_acc.append((th, acc))
+    return max(th_acc, key=lambda x: x[1])[0]
 
 
 def distribution_dataset(normal_dataset, gamble_dataset):

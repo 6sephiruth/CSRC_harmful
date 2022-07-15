@@ -42,12 +42,10 @@ def main():
     future = ['220425','220502','220530','220606','220613','220620','220704']
     for d in future:
         new_x = load_total_dataframe([f'./dataset/week_gamble/{d}.csv'])
-        new_y = pd.DataFrame(np.ones(len(new_x)))
-
         S.self_train(d, new_x)
 
     ##### ground truth testing #####
-    all_dates = ['220117', '220425','220502','220530','220606','220613','220620','220704']
+    all_dates = ['220117','220425','220502','220530','220606','220613','220620','220704']
     all_csv = map(lambda d: f'./dataset/week_gamble/{d}.csv', all_dates)
 
     all_gamb = load_total_dataframe(list(all_csv))
@@ -133,7 +131,7 @@ class SelfTrainingClassifier:
             pickle.dump(self.model, open(model_dir,'wb'))
 
         # report results
-        #self.report_result()
+        self.report_result()
         #self.report_attr()
         self.cnt += 1
 
@@ -259,7 +257,9 @@ class SelfTrainingClassifier:
 
         else:
             pred_y_ = model.predict_proba(test_x[col_names])
-            pred_y = pred_y_[:,1] > 0.1
+            # get optimal threshold
+            opt_thresh = acc_thresh(test_y, pred_y_[:,1])
+            pred_y = pred_y_[:,1] > opt_thresh
 
             print(roc_auc_score(test_y, pred_y_[:,1]))
 
