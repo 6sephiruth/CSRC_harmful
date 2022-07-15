@@ -3,9 +3,10 @@ import shutil
 
 from utils import *
 
-import xgboost
-from sklearn.metrics import *
-from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
+import xgboost as xgb
+from sklearn.metrics import confusion_matrix, roc_auc_score
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 
 def main():
     init_date = '220117'
@@ -14,36 +15,65 @@ def main():
     df_gamb = load_total_dataframe([f'./dataset/week_gamble/{init_date}.csv'])
     df_norm = load_total_dataframe(['./dataset/week_normal/raw_white.csv'])
 
-    #df_norm = df_norm[:len(df_gamb)]    # match length of normal instance
-
     df_gamb['label'] = 1
     df_norm['label'] = 0
 
     df_init = pd.concat([df_gamb, df_norm])
     df_init.fillna(0, inplace=True)
 
-    col_names = [c for c in df_init.columns if c != 'label']
-    init_x = df_init[col_names]
+    init_x = df_init.drop('label', axis=1)
     init_y = df_init['label']
 
     # define model
-    model = xgboost.XGBClassifier(n_estimators=200,
-                                  max_depth=10,
-                                  learning_rate=0.5,
-                                  min_child_weight=0,
-                                  tree_method='gpu_hist',
-                                  sampling_method='gradient_based',
-                                  reg_alpha=0.2,
-                                  reg_lambda=1.5)
+    model = xgb.XGBClassifier(base_score=0.1,
+                              n_estimators=200,
+                              max_depth=10,
+                              learning_rate=0.5,
+                              min_child_weight=0,
+                              tree_method='gpu_hist',
+                              sampling_method='gradient_based',
+                              reg_alpha=0.2,
+                              reg_lambda=1.5)
 
-    # initialize self-learning classifier
-    S = SelfLearningClassifier(model, init_date, init_x, init_y)
+    # initialize self-training classifier
+    S = SelfTrainingClassifier(model, init_date, init_x, init_y)
 
-    ##### new iteration #####
-    dates = ['220425','220502','220530','220606','220613','220620','220704']
-    for d in dates:
+    ##### self-training #####
+    future = ['220425','220502','220530','220606','220613','220620','220704']
+    for d in future:
         new_x = load_total_dataframe([f'./dataset/week_gamble/{d}.csv'])
-        S.self_learn(d, new_x)
+        new_y = pd.DataFrame(np.ones(len(new_x)))
+
+        S.self_train(d, new_x)
+
+    ##### ground truth testing #####
+    all_dates = ['220117', '220425','220502','220530','220606','220613','220620','220704']
+    all_csv = map(lambda d: f'./dataset/week_gamble/{d}.csv', all_dates)
+
+    all_gamb = load_total_dataframe(list(all_csv))
+    all_gamb['label'] = 1
+
+    df_all = pd.concat([all_gamb, df_norm])
+    df_all.fillna(0, inplace=True)
+
+    all_x = df_all.drop('label', axis=1)
+    all_y = df_all['label']
+
+    print(S.test_model(S.model, all_x, all_y, apply_thresh=True))
+
+    # define model
+    model = xgb.XGBClassifier(base_score=0.1,
+                              n_estimators=200,
+                              max_depth=10,
+                              learning_rate=0.5,
+                              min_child_weight=0,
+                              tree_method='gpu_hist',
+                              sampling_method='gradient_based',
+                              reg_alpha=0.2,
+                              reg_lambda=1.5)
+
+    # initialize self-training classifier
+    S = SelfTrainingClassifier(model, 'all', all_x, all_y)
 
     return
 
@@ -52,7 +82,6 @@ def check_new(data_dir='./dataset/week_gamble/'):
     """
     Checks if new data is available.
     """
-
     csv_files = sorted(glob.glob(f'{data_dir}/*.csv'))
     if len(csv_files):
         data = load_total_dataframe(csv_files)
@@ -61,17 +90,17 @@ def check_new(data_dir='./dataset/week_gamble/'):
     return None
 
 
-class SelfLearningClassifier:
+class SelfTrainingClassifier:
     def __init__(self, model, init_date, init_x, init_y):
         """
-        A self-learning classifier.
+        A self-training classifier.
 
         :param model: Machine learning model. XGBoost model instance.
         :param init_date: Initial date.
         :param init_x: Initial x data.
         :param init_y: Initial y data.
         """
-        assert isinstance(model, xgboost.sklearn.XGBModel) and len(init_x) == len(init_y)
+        assert isinstance(model, xgb.sklearn.XGBModel) and len(init_x) == len(init_y)
 
         # initialize members
         self.model = model
@@ -81,11 +110,13 @@ class SelfLearningClassifier:
         self.cnt = 0
 
         # update model
-        self.update_model(save_model=True)
+        self.update_model()
 
-    def update_model(self, save_model=False):
+    def update_model(self, save_model=True):
         """
         Update classifier.
+
+        :param save_model (optional): Indicator for saving model.
         """
         model_dir = f'trained_models/{self.cnt}_{self.date}'
 
@@ -102,25 +133,39 @@ class SelfLearningClassifier:
             pickle.dump(self.model, open(model_dir,'wb'))
 
         # report results
-        self.report_result()
-        self.report_attr()
+        #self.report_result()
+        #self.report_attr()
         self.cnt += 1
 
-    def self_learn(self, date, new_x, new_y=None):
+    def self_train(self, date, new_x, new_y=None):
         """
-        Self-learning with new instances.
+        Self-training with new instances.
 
         :param new_x: New x data.
         :param new_y (optional): New y data.
         """
         new_x = self.format_data(new_x)
-        if not new_y:
-            pred_y = self.model.predict(new_x[self.x.columns])
-            new_y = pd.DataFrame(pred_y)
+        idx = None
 
-        self.merge_data(new_x, new_y)
-        self.date = date
-        self.update_model(save_model=True)
+        while True:
+            if idx is None:
+                cur_x = new_x
+
+            pred_y = self.model.predict(cur_x[self.x.columns])
+            pred_y_ = self.model.predict_proba(cur_x[self.x.columns])
+
+            # filter index
+            idx = np.abs(pred_y_[:,0] - 0.5) >= 0.49
+            if sum(idx) == 0:
+                break
+
+            new_y = pd.DataFrame(pred_y[idx])
+            add_x = cur_x[idx]
+            cur_x = cur_x[~idx]
+
+            self.merge_data(add_x, new_y)
+            self.date = date
+            self.update_model()
 
     def format_data(self, new_x):
         """
@@ -145,9 +190,9 @@ class SelfLearningClassifier:
 
     def report_result(self, out='out.tsv'):
         """
-        Report self-learning results to a file.
+        Report self-training results to a file.
 
-        :param out: Output file.
+        :param out (optional): Output file.
         """
         if not os.path.exists(out):
             cols = ['n_week', 'date', 'acc', 'fpr', 'fnr']
@@ -169,7 +214,7 @@ class SelfLearningClassifier:
 
         :param attr_method: Type of attribution method.
         """
-        if not data_x:
+        if data_x is None:
             data_x = self.x
 
         os.makedirs(f'{attr_dir}/{attr_method}', exist_ok=True)
@@ -200,24 +245,31 @@ class SelfLearningClassifier:
         plt.savefig(f'{attr_dir}/{attr_method}/{prefix}_{self.date}.png')
 
     @staticmethod
-    def test_model(model, test_x, test_y):
+    def test_model(model, test_x, test_y, apply_thresh=False):
         """
         Test model's performance on the provided test data.
 
         :param test_x: Test data x.
         :param test_y: Test data y.
         """
-        pred_y = model.predict(test_x)
+        col_names = model.feature_names_in_
 
-        # metrics
-        acc = accuracy_score(test_y, pred_y)
-        #prec = precision_score(test_y, pred_y)
-        #rec = recall_score(test_y, pred_y)
+        if not apply_thresh:
+            pred_y = model.predict(test_x[col_names])
+
+        else:
+            pred_y_ = model.predict_proba(test_x[col_names])
+            pred_y = pred_y_[:,1] > 0.1
+
+            print(roc_auc_score(test_y, pred_y_[:,1]))
 
         # confusion matrix
         tn, fp, fn, tp = confusion_matrix(test_y, pred_y).ravel()
+        acc = (tn + tp) / (tn + fp + fn + tp)
         fpr = fp / (fp + tn)
         fnr = fn / (fn + tp)
+
+        print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
 
         return acc, fpr, fnr
 
