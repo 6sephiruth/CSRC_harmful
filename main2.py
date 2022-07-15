@@ -25,8 +25,7 @@ def main():
     init_y = df_init['label']
 
     # define model
-    model = xgb.XGBClassifier(base_score=0.1,
-                              n_estimators=200,
+    model = xgb.XGBClassifier(n_estimators=200,
                               max_depth=10,
                               learning_rate=0.5,
                               min_child_weight=0,
@@ -60,8 +59,7 @@ def main():
     print(S.test_model(S.model, all_x, all_y, apply_thresh=True))
 
     # define model
-    model = xgb.XGBClassifier(base_score=0.1,
-                              n_estimators=200,
+    model = xgb.XGBClassifier(n_estimators=200,
                               max_depth=10,
                               learning_rate=0.5,
                               min_child_weight=0,
