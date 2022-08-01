@@ -8,12 +8,14 @@ from sklearn.metrics import confusion_matrix, roc_auc_score
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+
 def main():
     init_date = '220117'
 
     # setup initial dataset
-    df_gamb = load_total_dataframe([f'./dataset/week_gamble/{init_date}.csv'])
-    df_norm = load_total_dataframe(['./dataset/week_normal/raw_white.csv'])
+    df_gamb = load_total_dataframe(f'./dataset/week_gamble/{init_date}.csv')
+    df_norm = load_total_dataframe('./dataset/week_normal/raw_white.csv')
 
     df_gamb['label'] = 1
     df_norm['label'] = 0
@@ -195,7 +197,7 @@ class SelfTrainingClassifier:
             with open(out, 'w') as f:
                 f.write('\t'.join(cols))
                 f.write('\n')
-
+        ##########
         stats = self.test_model(self.model, self.x, self.y)
         stats = map(lambda s: f'{s:.4f}', stats)
 
@@ -249,6 +251,7 @@ class SelfTrainingClassifier:
         :param test_y: Test data y.
         """
         col_names = model.feature_names_in_
+
 
         if not apply_thresh:
             pred_y = model.predict(test_x[col_names])

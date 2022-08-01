@@ -49,7 +49,6 @@ def load_total_dataframe(file_list):
 
     return total_dataframe
 
-
 # threshold that yields best accuracy
 def acc_thresh(labels, score):
     A = list(zip(labels, score))
