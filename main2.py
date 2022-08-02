@@ -3,12 +3,11 @@ import shutil
 
 from utils import *
 
+import argparse
 import xgboost as xgb
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 def main():
     init_date = '220117'
@@ -197,7 +196,7 @@ class SelfTrainingClassifier:
             with open(out, 'w') as f:
                 f.write('\t'.join(cols))
                 f.write('\n')
-        ##########
+
         stats = self.test_model(self.model, self.x, self.y)
         stats = map(lambda s: f'{s:.4f}', stats)
 
@@ -289,4 +288,13 @@ class SelfTrainingClassifier:
 
 
 if __name__ == "__main__":
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gpu", type=str, default="2",
+                        help="gpu to use")
+    arg = parser.parse_args()
+
+    # set gpu number
+    os.environ['CUDA_VISIBLE_DEVICES'] = arg.gpu
+
     main()

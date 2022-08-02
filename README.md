@@ -1,6 +1,12 @@
 # CSRC_harmful
 harmful site detection
 
+### Usage
+```
+$ python3 main2.py --gpu [gpu_id]
+```
+
+
 ## Gyumin
 ### input: dataset/week 데이터셋 csv 파일
 ### output: model, shap 기여도 excel 파일
