@@ -49,6 +49,24 @@ def load_total_dataframe(file_list):
 
     return total_dataframe
 
+def load_total_dataframe(file_list):
+    '''
+    폴더 내 모든 file list를 불러 온 뒤,
+    dataFrame을 하나로 묶는 과정
+    '''
+    empty_dataframe = pd.DataFrame()
+
+    all_files = [pd.read_csv(f) for f in file_list]
+    all_files = [pd.DataFrame(f.drop('Unnamed: 0', axis=1)) for f in all_files]
+
+    total_dataframe = pd.concat(all_files)
+
+    return total_dataframe
+
+    total_dataframe = pd.concat(all_files)
+
+    return total_dataframe
+
 # threshold that yields best accuracy
 def acc_thresh(labels, score):
     A = list(zip(labels, score))
@@ -74,6 +92,10 @@ def distribution_dataset(normal_dataset, gamble_dataset):
     gamble_dataset["correct_label"] = 1
 
     total_dataset = pd.concat([normal_dataset, gamble_dataset])
+
+    gamble_columns = ['방침', '회원', '코로나', '정보처리', '가입', '시설', '사업자', '기업', '진흥', '로고', '제품', '본문', '카지노', '지역', '판매', '소개', '체육관', '등', '배팅한', '메뉴', '자료', '홈페이지', '코리아', '예약', '낙', '단체', '검색', '길', '승무', '뉴스', '사업', '발전', '궁금', '대소문자', '스게', '가기', '무료', '통', '배팅', '콘텐츠', '서비스', '충', '일요일', '거리', '지원', '세상', '고객', '정품', '물', '게임', '글로벌', '후반전', '체육', '행사', '배팅내역', '대표', '교육', '슬롯', '종료', '중복', '회', '중앙', '사전', '베트남', '유료', '경기도', '것', '관리', '하나', '전국', '서울', '인터넷', '한국어', '건강', '소식', '기술', '현실', '당일', '년', '일반', '토', '아이스', '보기', '이유', '돌발', '구글', '댓글', '인사말', '수', '멤버십', '스포츠', '사용', '최대', '자랑', '롤링', '수영', '버블', '베팅', '다음', '일리', '전반전', '득점', '사이트', '횟수', '제공', '현대', '한국', '슈퍼', '방문', '위', '역대', '동영상', '최상', '문화', '중단', '힘', '공지', '회사', '직접', '반', '공휴일', '충남', '패키지', '양도', '타운', '셔틀', '센터', '및', '더', 'correct_label']
+    total_dataset = pd.DataFrame(total_dataset, columns=gamble_columns)
+
     total_dataset = total_dataset.fillna(0)
 
     total_columns = total_dataset.columns

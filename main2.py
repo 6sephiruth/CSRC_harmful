@@ -14,8 +14,8 @@ def main():
     init_date = '220117'
 
     # setup initial dataset
-    df_gamb = load_total_dataframe(f'./dataset/week_gamble/{init_date}.csv')
-    df_norm = load_total_dataframe('./dataset/week_normal/raw_white.csv')
+    df_gamb = load_total_dataframe([f'./dataset/week_gamble/{init_date}.csv'])
+    df_norm = load_total_dataframe(['./dataset/week_normal/raw_white.csv'])
 
     df_gamb['label'] = 1
     df_norm['label'] = 0

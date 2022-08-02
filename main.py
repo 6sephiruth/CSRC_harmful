@@ -1,4 +1,5 @@
 import shutil
+import pymysql
 
 from utils import *
 
@@ -17,6 +18,37 @@ from sklearn.model_selection import cross_val_score
 #    tf.config.experimental.set_memory_growth(d, True)
 
 # 실험 결과 리스트 PATH
+
+# host='143.248.38.246'
+# user='root'
+# password='Next_lab2!'
+# db='hamfulsite'
+# port=13306
+
+# def loadDB():
+#     connection = pymysql.connect(host=host, user=user, password=password, db=db, port=port, charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor)
+#     cur = connection.cursor()
+#     # sql_check = "SELECT scheme, fld FROM gambleResult where flag=3 and statusCode = 200 LIMIT 1"
+#     # sql_check = "SELECT id, scheme, fld FROM gamble where flag1=1 and id >859"
+#     sql_check = "SELECT id, scheme, fld, path FROM gambleResult4 where flag=0"
+#     print(sql_check)
+#     cur.execute(sql_check)
+#     checkResult = cur.fetchall()
+#     connection.close()
+#     return checkResult
+
+# urls = loadDB()
+
+# for row in urls:
+#     url = row['scheme'] + '://' + row['fld'] + '/'
+
+#     pid = row['id']
+#     scheme = row['scheme']
+#     fld = row['fld']
+#     path = row['path']    
+#     print(path)
+
+
 experiment_path = './report_experiment/'
 
 normal_list = './dataset/week_normal/'
@@ -61,11 +93,12 @@ while True:
         cross_week_5 = cross_val_score(one_week_model, x_full, y_full, cv=5) # model, train, target, cross validation
         cross_week_10 = cross_val_score(one_week_model, x_full, y_full, cv=10) # model, train, target, cross validation
 
+
         break
 
+exit()
 
 short_shap_name, short_shap_value = report_shap(x_train, total_columns,  one_week_model)
-
 ############ Lite Model 생성
 
 lite_normal_columns = list(set(normal_total_dataset.columns) & set(short_shap_name))
