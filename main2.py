@@ -1,6 +1,4 @@
 # main, but modularized
-import shutil
-
 from utils import *
 
 import argparse
