@@ -5,19 +5,27 @@ import xgboost as xgb
 import numpy as np
 import pandas as pd
 
+from utils import *
+
+from sklearn.model_selection import cross_val_score
+
 import pickle
 
 seed = 1
 
 # load datasets
+# 1233
 gamble_dataset = pd.read_csv("./dataset/raw_gamble.csv")
 gamble_dataset = pd.DataFrame(gamble_dataset.drop('Unnamed: 0', axis=1))
 
+# 632
 ad_dataset = pd.read_csv("./dataset/raw_advertisement.csv")
 ad_dataset = pd.DataFrame(ad_dataset.drop('Unnamed: 0', axis=1))
 
+# 485
 white_dataset = pd.read_csv("./dataset/raw_white.csv")
 white_dataset = pd.DataFrame(white_dataset.drop('Unnamed: 0', axis=1))
+
 
 # extract total columns: is this necessary?
 #total_columns = gamble_dataset.columns
@@ -83,6 +91,22 @@ y_pred = model_1.predict(x_test)
 y_pred = [round(value) for value in y_pred]
 accuracy = accuracy_score(y_test, y_pred)
 print("Test accuracy: %.2f" % (accuracy * 100.0))
+
+short_shap_name, short_shap_value = report_shap(x_train, total_columns,  model_1)
+
+print(short_shap_name[:20])
+print(short_shap_value[:20])
+
+
+# x_full = np.concatenate((x_train, x_test), axis = 0)
+# y_full = np.concatenate((y_train, y_test), axis = 0)
+
+# cross_week_5 = cross_val_score(model_1, x_full, y_full, cv=5) # model, train, target, cross validation
+# cross_week_10 = cross_val_score(model_1, x_full, y_full, cv=10) # model, train, target, cross validation
+
+# print(cross_week_5)
+# print(cross_week_10)
+
 
 ###########################################
 # 2단계 모델 만들기 (도박 vs 광고)
@@ -158,3 +182,8 @@ prediction_result[np.where(model1_pred < 1)] = 0
 
 accuracy = accuracy_score(prediction_result, init_y)
 print("Accuracy: %.2f" % (accuracy * 100.0))
+
+short_shap_name, short_shap_value = report_shap(x_train, total_columns,  model_2)
+
+print(short_shap_name[:20])
+print(short_shap_value[:20])
