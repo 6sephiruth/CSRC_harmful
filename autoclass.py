@@ -63,7 +63,12 @@ try:
 
 except:
     # define model
-    automl = AutoSklearn2Classifier(memory_limit=50000)
+    automl = AutoSklearn2Classifier(
+                memory_limit=None,
+                time_left_for_this_task=10800,
+                per_run_time_limit=1080,
+                seed=seed
+            )
     automl.fit(x_train, y_train)
     pickle.dump(automl, open('auto.pt','wb'))
 
