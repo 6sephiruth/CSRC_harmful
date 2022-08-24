@@ -270,10 +270,11 @@ def report_shap(x_train, total_columns, XGB_model):
             attribution_value.append(values[i,ind])
 
     for find_value_zero in range(x_train.shape[1]):
+    # for find_value_zero in range(10):
 
         attribution_name.append(total_columns[feature_inds[find_value_zero]])
 
-        if attribution_value[find_value_zero] == 0:
-            break
+        # if attribution_value[find_value_zero] == 0:
+        #     break
 
     return attribution_name[:find_value_zero], attribution_value[:find_value_zero]
