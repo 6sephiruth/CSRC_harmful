@@ -11,6 +11,9 @@ from sklearn.model_selection import cross_val_score
 
 import pickle
 
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+
 seed = 1
 
 # 485
@@ -18,7 +21,7 @@ white_dataset = pd.read_csv("./dataset/raw_white.csv")
 white_dataset = pd.DataFrame(white_dataset.drop('Unnamed: 0', axis=1))
 white_dataset['label'] = 0
 
-gamble_dataset = pd.read_csv(f"./dataset/week_gamble/220502.csv")
+gamble_dataset = pd.read_csv(f"./dataset/week_gamble/220117.csv")
 gamble_dataset = pd.DataFrame(gamble_dataset.drop('Unnamed: 0', axis=1))
 gamble_dataset['label'] = 1
 
@@ -26,7 +29,6 @@ gamble_dataset['label'] = 1
 ad_dataset = pd.read_csv("./dataset/raw_advertisement.csv")
 ad_dataset = pd.DataFrame(ad_dataset.drop('Unnamed: 0', axis=1))
 ad_dataset['label'] = 2
-
 
 white_train = white_dataset.sample(frac=0.8, random_state=seed)
 white_test = white_dataset.drop(white_train.index)
@@ -77,9 +79,20 @@ print("Test accuracy: %.2f" % (accuracy * 100.0))
 
 print("-----------------------------")
 
+x_full = np.concatenate((x_train, x_test), axis = 0)
+y_full = np.concatenate((y_train, y_test), axis = 0)
+
+cross_week_5 = cross_val_score(model, x_full, y_full, cv=5) # model, train, target, cross validation
+cross_week_10 = cross_val_score(model, x_full, y_full, cv=10) # model, train, target, cross validation
+
+print('cross')
+print(np.mean(cross_week_5)*100)
+print(np.mean(cross_week_10)*100)
+
+explainer = shap.Explainer(model)
+shap_values = explainer(x_test)
 
 short_shap_name, short_shap_value = report_shap(x_test, total_columns,  model)
 
-print(short_shap_name)
-print(short_shap_value)
-
+print(short_shap_name[:300])
+print(short_shap_value[:300])

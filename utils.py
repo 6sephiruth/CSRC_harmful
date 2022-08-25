@@ -136,9 +136,9 @@ def report_shap(x_train, total_columns, XGB_model):
     merge_cohorts = False
     show_data = "auto"
     show = True
-
+    # 이쪽이다~~
     if isinstance(shap_values, Explanation):
-        cohorts = {"": shap_values}
+        cohorts = {"": shap_values[:,:,2]}
     elif isinstance(shap_values, Cohorts):
         cohorts = shap_values.cohorts
     else:

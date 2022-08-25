@@ -13,7 +13,8 @@ import pickle
 
 seed = 1
 
-gyu_dates = [220117, 220425, 220502, 220530, 220606, 220613, 220620, 220704]
+# gyu_dates = [220117, 220425, 220502, 220530, 220606, 220613, 220620, 220704]
+gyu_dates = [220530, 220606, 220613, 220620, 220704]
 
 for gyu_date in gyu_dates:
     print(gyu_date)
@@ -98,7 +99,7 @@ for gyu_date in gyu_dates:
     print(np.mean(cross_week_5)*100)
     print(np.mean(cross_week_10)*100)
 
-
+    
     short_shap_name, short_shap_value = report_shap(x_test, total_columns,  model)
 
     pickle.dump(short_shap_name, open(f'./result/{gyu_date}_name', 'wb'))
