@@ -2,3 +2,4 @@ __pycache__
 report_experiment
 trained_models
 *.pt
+*.png
