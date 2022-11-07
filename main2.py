@@ -8,11 +8,11 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 
 def main():
-    init_date = '220117'
+    init_date = '221025'
 
     # setup initial dataset
     df_gamb = load_total_dataframe([f'./dataset/week_gamble/{init_date}.csv'])
-    df_norm = load_total_dataframe(['./dataset/week_normal/raw_white.csv'])
+    df_norm = load_total_dataframe(['./dataset/raw_white.csv'])
 
     df_gamb['label'] = 1
     df_norm['label'] = 0
@@ -183,7 +183,7 @@ class SelfTrainingClassifier:
         self.x = pd.concat([self.x, new_x]).fillna(0)
         self.y = pd.concat([self.y, new_y])
 
-    def report_result(self, out='out.tsv'):
+    def report_result(self, out='out2.tsv'):
         """
         Report self-training results to a file.
 

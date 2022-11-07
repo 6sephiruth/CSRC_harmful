@@ -12,8 +12,8 @@ from utils import *
 import pickle
 import time
 
-#os.environ['CUDA_VISIBLE_DEVICES'] = '2'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 seed = 1
 
@@ -47,10 +47,10 @@ def train(model, device, train_loader, criterion, optimizer, epoch):
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        if batch_idx % 10 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+        # if batch_idx % 10 == 0:
+        #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+        #         epoch, batch_idx * len(data), len(train_loader.dataset),
+        #         100. * batch_idx / len(train_loader), loss.item()))
 
 def test(model, device, test_loader, criterion):
     model.eval()
@@ -65,9 +65,9 @@ def test(model, device, test_loader, criterion):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-    100. * correct / len(test_loader.dataset)))
+    # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    #     test_loss, correct, len(test_loader.dataset),
+    # 100. * correct / len(test_loader.dataset)))
 
 
 # 485
@@ -75,9 +75,15 @@ white_dataset = pd.read_csv("./dataset/raw_white.csv")
 white_dataset = pd.DataFrame(white_dataset.drop('Unnamed: 0', axis=1))
 white_dataset['label'] = 0
 
-gamble_dataset = pd.read_csv(f"./dataset/week_gamble/220117.csv")
+# 220117, 220425, 220502, 220530, 220606, 220613, 220620, 220704, raw_gamble_recent
+
+gamble_dataset = pd.read_csv(f"./dataset/week_gamble/raw_gamble_recent.csv")
 gamble_dataset = pd.DataFrame(gamble_dataset.drop('Unnamed: 0', axis=1))
 gamble_dataset['label'] = 1
+
+# size_gamble_dataset = len(gamble_dataset)
+# gamble_dataset['임규민'] = 0
+# gamble_dataset[:int(size_gamble_dataset)]['임규민'] = 10
 
 # 632
 ad_dataset = pd.read_csv("./dataset/raw_advertisement.csv")
@@ -140,9 +146,9 @@ except:
 
     ed = time.time()
 
-    print('[*] time to train baseline:', ed-st)
+    # print('[*] time to train baseline:', ed-st)
 
-    pickle.dump(mlp, open('3-class-mlp.pt','wb'))
+    # pickle.dump(mlp, open('3-class-mlp.pt','wb'))
 
 # evaluation
 with torch.no_grad():
@@ -162,8 +168,12 @@ accuracy = accuracy_score(y_test, y_pred_test)
 print("Test accuracy: %.2f" % (accuracy * 100.0))
 print("-----------------------------")
 
-ConfusionMatrixDisplay.from_predictions(y_test, y_pred_test)
-plt.savefig('cm_base_mlp.png')
+
+# print(np.where(y_test != y_pred_test))
+
+
+# ConfusionMatrixDisplay.from_predictions(y_test, y_pred_test)
+# plt.savefig('cm_base_mlp.png')
 
 # feature_names
 feature_names = total_columns.drop('label').values
@@ -176,11 +186,11 @@ except:
     explainer = shap.DeepExplainer(mlp, torch.Tensor(x_train.values).to(device))
     shap_values = explainer.shap_values(torch.Tensor(x_test.values).to(device))
 
-    pickle.dump(shap_values, open('shap_val.pt','wb'))
+    # pickle.dump(shap_values, open('shap_val.pt','wb'))
 
 # filtering mode
-FILTER = "by-order"         # 각 클래스별 top 100 키워드 추출
-#FILTER = "by-thresh"        # 각 클래스별 SHAP이 0보다 큰 키워드 추출
+#FILTER = "by-order"         # 각 클래스별 top 100 키워드 추출
+FILTER = "by-thresh"        # 각 클래스별 SHAP이 0보다 큰 키워드 추출
 
 ORD = 100
 THRESH = 0.0001
@@ -210,11 +220,17 @@ for cls in range(n_class):
 # keywords from shap
 from functools import reduce
 feat_shap_all = list(reduce(set.union, feat_shap))
-print(len(feat_shap_all))
+
+
 
 # filter columns
 x_train_shap = x_train[feat_shap_all]
 x_test_shap = x_test[feat_shap_all]
+
+
+print("랄랄랄")
+print(x_test_shap.shape)
+exit()
 
 train_ds = TensorDataset(torch.Tensor(x_train_shap.values),
                          torch.LongTensor(y_train.values))
@@ -245,7 +261,7 @@ except:
 
     ed = time.time()
 
-    print('[*] time to train shap:', ed-st)
+    # print('[*] time to train shap:', ed-st)
 
     #pickle.dump(mlp_shap, open('3-class-shap-mlp.pt','wb'))
 
@@ -267,5 +283,20 @@ accuracy = accuracy_score(y_test, y_pred_test)
 print("Test accuracy: %.2f" % (accuracy * 100.0))
 print("-----------------------------")
 
+
+print("간단 데이터")
+y_test = np.array(y_test)
+y_pred_test = np.array(y_pred_test)
+
+print(len(y_test))
+print(y_test)
+print("---------------------------------------------------")
+print(y_pred_test)
+
+print(np.where(y_test != y_pred_test))
+
+
+exit()
+
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_test)
-plt.savefig('cm_shap_mlp.png')
+# plt.savefig('cm_shap_mlp.png')

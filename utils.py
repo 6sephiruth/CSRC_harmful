@@ -1,6 +1,7 @@
 import os
 import glob
 import pickle
+import time
 
 import pandas as pd
 import numpy as np
@@ -278,3 +279,33 @@ def report_shap(x_train, total_columns, XGB_model):
         #     break
 
     return attribution_name[:find_value_zero], attribution_value[:find_value_zero]
+
+
+# [출처] [Python] - 정수 리스트 중 주어진 정수, 실수값과 가장 가까운 정수 찾기(근사값 찾기)|작성자 주현
+def findNearNum(exList, values):
+    answer = [0 for _ in range(2)] # answer 리스트 0으로 초기화
+
+    minValue = min(exList, key=lambda x:abs(x-values))
+    minIndex = exList.index(minValue)
+    answer[0] = minIndex
+    answer[1] = minValue
+    
+    return answer
+
+
+def transform_dataframe(dataset, columns):
+
+    new_dataframe = pd.DataFrame()
+
+    for co in columns:
+
+        try:
+            new_dataframe[co] = dataset[co].copy()
+        except:
+            new_dataframe[co] = 0
+
+    # pickle.dump(new_dataframe, open('./dataset/process_221025.csv','wb'))
+
+    return new_dataframe
+
+    
