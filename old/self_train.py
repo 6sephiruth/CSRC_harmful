@@ -183,7 +183,7 @@ class SelfTrainingClassifier:
         self.x = pd.concat([self.x, new_x]).fillna(0)
         self.y = pd.concat([self.y, new_y])
 
-    def report_result(self, out='out2.tsv'):
+    def report_result(self, out='out.tsv'):
         """
         Report self-training results to a file.
 
