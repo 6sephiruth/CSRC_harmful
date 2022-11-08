@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import ConfusionMatrixDisplay
 
@@ -10,6 +11,15 @@ import time
 import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+=======
+from utils import *
+
+import time
+import xgboost as xgb
+
+#os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+>>>>>>> Stashed changes
 
 seed = 1
 

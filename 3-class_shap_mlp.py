@@ -1,7 +1,7 @@
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import ConfusionMatrixDisplay
+from utils import *
 
-import os
+import time
+
 import torch
 from torch import nn, optim
 import torch.nn.functional as F
@@ -60,8 +60,8 @@ def test(model, device, test_loader, criterion):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += criterion(output, target).item() # sum up batch loss
-            pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
+            test_loss += criterion(output, target).item()
+            pred = output.max(1, keepdim=True)[1]
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
