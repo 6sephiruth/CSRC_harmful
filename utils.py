@@ -1,11 +1,7 @@
-<<<<<<< Updated upstream
 import os
 import glob
 import pickle
 import time
-=======
-import os, glob, pickle
->>>>>>> Stashed changes
 
 import pandas as pd
 import numpy as np
@@ -294,7 +290,7 @@ def findNearNum(exList, values):
     minIndex = exList.index(minValue)
     answer[0] = minIndex
     answer[1] = minValue
-    
+
     return answer
 
 
@@ -313,4 +309,3 @@ def transform_dataframe(dataset, columns):
 
     return new_dataframe
 
-    
