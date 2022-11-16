@@ -1,8 +1,89 @@
-import os, pickle
+# main, but modularized
+from utils import *
 
-import numpy as np
-import pandas as pd
+import argparse
 import xgboost as xgb
+from sklearn.metrics import confusion_matrix, roc_auc_score, accuracy_score
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+
+def main():
+    init_date = '221025'
+
+    # setup initial dataset
+    df_gamb = load_total_dataframe([f'./dataset/week_gamble/{init_date}.csv'])
+    df_norm = load_total_dataframe(['./dataset/raw_white.csv'])
+
+    df_gamb['label'] = 1
+    df_norm['label'] = 0
+
+    df_init = pd.concat([df_gamb, df_norm])
+    df_init.fillna(0, inplace=True)
+
+    init_x = df_init.drop('label', axis=1)
+    init_y = df_init['label']
+
+    # define model
+    model = xgb.XGBClassifier(n_estimators=200,
+                              max_depth=10,
+                              learning_rate=0.5,
+                              min_child_weight=0,
+                              tree_method='gpu_hist',
+                              sampling_method='gradient_based',
+                              reg_alpha=0.2,
+                              reg_lambda=1.5)
+
+    # initialize self-training classifier
+    S = SelfTrainingClassifier(model, init_date, init_x, init_y)
+
+    ##### self-training #####
+    future = ['220425','220502','220530','220606','220613','220620','220704']
+    for d in future:
+        new_x = load_total_dataframe([f'./dataset/week_gamble/{d}.csv'])
+        S.self_train(d, new_x)
+
+    ##### ground truth testing #####
+    all_dates = ['220117','220425','220502','220530','220606','220613','220620','220704']
+    all_csv = map(lambda d: f'./dataset/week_gamble/{d}.csv', all_dates)
+
+    all_gamb = load_total_dataframe(list(all_csv))
+    all_gamb['label'] = 1
+
+    df_all = pd.concat([all_gamb, df_norm])
+    df_all.fillna(0, inplace=True)
+
+    all_x = df_all.drop('label', axis=1)
+    all_y = df_all['label']
+
+    print(S.test_model(S.model, all_x, all_y, apply_thresh=True))
+
+    # define model
+    model = xgb.XGBClassifier(n_estimators=200,
+                              max_depth=10,
+                              learning_rate=0.5,
+                              min_child_weight=0,
+                              tree_method='gpu_hist',
+                              sampling_method='gradient_based',
+                              reg_alpha=0.2,
+                              reg_lambda=1.5)
+
+    # initialize self-training classifier
+    S = SelfTrainingClassifier(model, 'all', all_x, all_y)
+
+    return
+
+
+def check_new(data_dir='./dataset/week_gamble/'):
+    """
+    Checks if new data is available.
+    """
+    csv_files = sorted(glob.glob(f'{data_dir}/*.csv'))
+    if len(csv_files):
+        data = load_total_dataframe(csv_files)
+        return data.fillna(0)
+
+    return None
+
 
 class SelfTrainingClassifier:
     def __init__(self, model, init_date, init_x, init_y):
@@ -48,6 +129,7 @@ class SelfTrainingClassifier:
 
         # report results
         self.report_result()
+        #self.report_attr()
         self.cnt += 1
 
     def self_train(self, date, new_x, new_y=None):
@@ -109,11 +191,12 @@ class SelfTrainingClassifier:
         """
         if not os.path.exists(out):
             cols = ['n_week', 'date', 'acc', 'fpr', 'fnr']
-            with open(out,'w') as f:
+            with open(out, 'w') as f:
                 f.write('\t'.join(cols))
                 f.write('\n')
 
-        stats = self.test_model(self.model, self.x, self.y)
+        # TODO: fix after more stats
+        stats = [self.test_model(self.model, self.x, self.y)]
         stats = map(lambda s: f'{s:.4f}', stats)
 
         with open(out,'a') as f:
@@ -180,14 +263,17 @@ class SelfTrainingClassifier:
             print(roc_auc_score(test_y, pred_y_[:,1]))
 
         # confusion matrix
-        tn, fp, fn, tp = confusion_matrix(test_y, pred_y).ravel()
-        acc = (tn + tp) / (tn + fp + fn + tp)
-        fpr = fp / (fp + tn)
-        fnr = fn / (fn + tp)
+        # TODO: support for multi-label prediction
+        #tn, fp, fn, tp = confusion_matrix(test_y, pred_y).ravel()
+        #acc = (tn + tp) / (tn + fp + fn + tp)
+        #fpr = fp / (fp + tn)
+        #fnr = fn / (fn + tp)
 
-        print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
+        acc = accuracy_score(test_y, pred_y)
 
-        return acc, fpr, fnr
+        #print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
+
+        return acc
 
     @staticmethod
     def cross_val(model, x, y, k=10, seed=0):
@@ -201,3 +287,16 @@ class SelfTrainingClassifier:
         scores = cross_val_score(model, x, y, cv=cv, random_state=seed)
 
         return np.mean(scores)
+
+
+if __name__ == "__main__":
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gpu", type=str, default="2",
+                        help="gpu to use")
+    arg = parser.parse_args()
+
+    # set gpu number
+    os.environ['CUDA_VISIBLE_DEVICES'] = arg.gpu
+
+    main()

@@ -3,14 +3,11 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.decomposition import PCA
 from sklearn.utils import shuffle
-from sklearn.metrics import *
+
+from util import *
 
 from collections import Counter
 import operator
-
-import xgboost as xgb
-import pandas as pd
-import numpy as np
 
 import time
 import shap
@@ -19,27 +16,6 @@ def get_invar(df, drop_field=[]):
     df_new = df[df.columns.drop(drop_field)]
 
     return list(df_new.columns[df_new.max(axis=0) == df_new.min(axis=0)])
-
-def identity(df, a, b):
-    return df
-
-def minmax(df, mi, mx):
-    ndf = df.copy()
-    for c in df.columns:
-        if mi[c] == mx[c]:
-            ndf[c] = df[c] - mi[c]
-        else:
-            ndf[c] = (df[c] - mi[c]) / (mx[c] - mi[c])
-    return ndf
-
-def zscore(df, mean, std):
-    ndf = df.copy()
-    for c in df.columns:
-        if std[c] == 0:
-            ndf[c] = df[c] - mean[c]
-        else:
-            ndf[c] = (df[c] - mean[c]) / std[c]
-    return ndf
 
 def aug_norm(x, sigma=0.03):
     return x + np.random.normal(loc=0., scale=sigma, size=x.shape)
@@ -136,7 +112,7 @@ def pattern_score(ps, ys, ref_p):
     return [match_pattern(p,ref_p[y]) for p,y in zip(ps,ys)]
 
 def match_pattern(p1, p2):
-    # TODO: weighted scoring? according to ordering
+    # TODO: weighted scoring
     assert len(p1) == len(p2)
 
     score = 0
@@ -159,7 +135,7 @@ def main():
     cls_field = 'label'
 
     # setup initial dataset
-    df_gam = load_df(f'{DATA_DIR}/week_gamble/raw_gamble_recent.csv')
+    df_gam = load_df(f'{DATA_DIR}/week_gamble/220117.csv')
     df_adv = load_df(f'{DATA_DIR}/raw_advertisement.csv')
     df_etc = load_df(f'{DATA_DIR}/raw_white.csv')
 
@@ -183,47 +159,54 @@ def main():
     etc_raw = data_raw[data_raw[cls_field] == 2]
 
     seed = 8
-    frac = 0.5
 
-    # randomly split between labels
-    gam_tr, gam_te = train_test_split(gam_raw, frac=frac, seed=seed)
-    adv_tr, adv_te = train_test_split(adv_raw, frac=frac, seed=seed)
-    etc_tr, etc_te = train_test_split(etc_raw, frac=frac, seed=seed)
-
-    train_raw = pd.concat([gam_tr, adv_tr, etc_tr])
-    test_raw = pd.concat([gam_te, adv_te, etc_te])
+    # use all data
+    train_raw = pd.concat([gam_raw, adv_raw, etc_raw])
 
     # preprocessing
     invar_fields = get_invar(train_raw, drop_field=[cls_field])
     drop = invar_fields + ['weight', cls_field]
     valid_cols = train_raw.columns.drop(drop)
 
-    # configure dataset and weights
+    # skip normalization
     x_train = train_raw[valid_cols]
     y_train = train_raw[cls_field]
     w_train = train_raw['weight']
-    x_test = test_raw[valid_cols]
-    y_test = test_raw[cls_field]
-    w_test = test_raw['weight']
 
     # training
     print('[*] training ...')
     model = eval(model_name)(random_state=seed, n_jobs=-1)
 
-    s = time.time()
     model.fit(x_train, y_train)
-    e = time.time()
-
-    print('[*]', e-s, 'seconds taken')
 
     # evaluation
     y_pred_tr = model.predict(x_train)
     acc_tr = accuracy_score(y_train, y_pred_tr, sample_weight=w_train)
+    print(acc_tr)
 
-    y_pred_te = model.predict(x_test)
-    acc_te = accuracy_score(y_test, y_pred_te, sample_weight=w_test)
+    init_date = '220101'
+    S = SelfTrainingClassifier(model, init_date, x_train, y_train)
 
-    print(acc_tr, acc_te)
+    ##### self-training #####
+    all_gam = []
+    future = ['220117', '220425','220502','220530','220606','220613','220620','220704']
+    for d in future:
+        new_x = load_df(f'{DATA_DIR}/week_gamble/{d}.csv')
+        S.self_train(d, new_x)
+        all_gam.append(new_x)
+
+    ##### ground truth testing #####
+    df_all_gam = pd.concat(all_gam)
+    df_all_gam[cls_field] = 0
+
+    df_all = pd.concat([df_all_gam, data_raw])
+    df_all.fillna(0, inplace=True)
+
+    all_x = df_all.drop(cls_field, axis=1)
+    all_y = df_all[cls_field]
+
+    print(S.test_model(S.model, all_x, all_y))
+    exit()
 
     # number of keywords to extract
     N_KEY = 15
@@ -309,8 +292,6 @@ def main():
         a_loss = log_loss(y_test, y_pred_p, sample_weight=w_test)
 
         # benchmark
-        info = [model_name, str(frac), str(n_aug)]
-
         with open(bench_name,'a') as f:
             s = '\t'.join([model_name, str(n_aug), normalize]) + '\t'
             #s += '\t'.join(list(map(lambda t: f"{t:.4f}", b_te))) + '\t'

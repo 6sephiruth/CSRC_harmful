@@ -9,6 +9,7 @@ MODEL = {
 }
 
 # get arguments
+# TODO: finish setup
 def get_args():
     # parse arguments
     parser = argparse.ArgumentParser()
