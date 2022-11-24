@@ -242,6 +242,9 @@ def main():
                                 explainer=explainer,
                                 n_key=N_KEY)
 
+    print(ref_pattern)
+    exit()
+
     s_train = pattern_score(train_pattern, y_train, ref_pattern)
     print(np.average(s_train, weights=w_train))
     print(np.max(s_train))

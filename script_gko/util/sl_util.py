@@ -4,11 +4,14 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 import sklearn as skl
+import shap
+import operator
 
 from sklearn.metrics import *
+from collections import Counter
 
 class SelfTrainingClassifier:
-    def __init__(self, model, init_date, init_x, init_y):
+    def __init__(self, model, init_date, init_x, init_y, seed=0):
         """
         A self-training classifier.
 
@@ -27,6 +30,7 @@ class SelfTrainingClassifier:
         self.x = init_x
         self.y = init_y
         self.cnt = 0
+        self.seed = seed
 
         # update model
         self.update_model()
@@ -54,6 +58,9 @@ class SelfTrainingClassifier:
         # report results
         self.report_result()
         self.cnt += 1
+
+    def update_expl(self):
+        self.expl = shap.TreeExplainer(self.model, seed=self.seed)
 
     def self_train(self, date, new_x, new_y=None):
         """
@@ -84,6 +91,8 @@ class SelfTrainingClassifier:
             self.merge_data(add_x, new_y)
             self.date = date
             self.update_model()
+            self.update_expl()
+            self.shap_keyword()
 
     def format_data(self, new_x):
         """
@@ -130,26 +139,29 @@ class SelfTrainingClassifier:
             f.write('\t'.join(stats))
             f.write('\n')
 
-    def report_attr(self, data_x=None, attr_method='importance', attr_dir='./attributions'):
+    def shap_keyword(self):
         """
-        Get attribution values for current model.
+        Get shap values for current model.
+        """
+        ref_pattern = make_pattern(xs=self.x, ys=self.y,
+                                   explainer=self.expl, n_key=15)
+        print(ref_pattern)
+        # TODO: pattern should be generated for each label
+        exit()
 
-        :param attr_method: Type of attribution method.
-        """
+        train_pattern = get_pattern(xs=self.x, ys=self.y, xs_mean=self.x.mean(),
+                                    explainer=self.expl, n_key=15)
+        print(train_pattern)
+
+        s_train = pattern_score(train_pattern, self.y, ref_ptn)
+
+        print(s_train)
+        exit()
+
         if data_x is None:
             data_x = self.x
 
         os.makedirs(f'{attr_dir}/{attr_method}', exist_ok=True)
-
-        if attr_method == 'importance':
-            attr = self.model.feature_importances_
-            prefix = 'imp'
-        if attr_method == 'shap':
-            prefix = 'shap'
-            pass
-        if attr_method == 'lime':
-            prefix = 'lime'
-            pass
 
         col_names = self.x.columns
         num_nonzero = len([x for x in attr if x > 0])
@@ -188,15 +200,74 @@ class SelfTrainingClassifier:
 
         return accuracy_score(test_y, pred_y)
 
-    @staticmethod
-    def cross_val(model, x, y, k=10, seed=0):
-        """
-        Cross validation on the provided datasets.
+# generate keyword pattern
+def make_pattern(xs, ys, explainer, n_key=5):
+    keywords = get_keywords(xs, ys, explainer, n_key, w_key=2)
+    print(keywords)
+    print(np.array(keywords).shape)
+    exit()
 
-        :param x: x
-        :param y: y
-        """
-        cv = StratifiedKFold(k, random_state=seed)
-        scores = cross_val_score(model, x, y, cv=cv, random_state=seed)
+    pattern = []
+    for l in set(ys):
+        idx_l = ys.values == l
+        key_l = keywords[idx_l]   # extract keywords
 
-        return np.mean(scores)
+        # extract most frequent keywords
+        cnt_l = Counter(list(key_l.flatten()))
+        freq_l = sorted(cnt_l.items(), key=operator.itemgetter(1), reverse=True)[:n_key]
+
+        ptn_l = []
+        for k,_ in freq_l:
+            avg_all = np.mean(xs[k])
+            avg_l = np.mean(xs[idx_l][k])
+            sgn_k = avg_l >= avg_all
+
+            ptn_l.append((k,sgn_k))
+
+        pattern.append(ptn_l)
+
+    return pattern
+
+# get keyword pattern
+def get_pattern(xs, ys, xs_mean, explainer, n_key=5):
+    keywords = get_keywords(xs, ys, explainer, n_key, w_key=1)
+
+    pattern = []
+    for (_,x),ks in zip(xs.iterrows(),keywords):
+        ptn = [(k,x[k]>=xs_mean[k]) for k in ks]
+        pattern.append(ptn)
+
+    return pattern
+
+# get keywords
+def get_keywords(xs, ys, explainer, n_key=5, w_key=3):
+    shap_val = explainer.shap_values(xs, check_additivity=False)
+    best_idx = np.argsort(shap_val)[...,-int(w_key*n_key):]
+
+    key_all = np.array(xs.columns)[best_idx]
+    key_label = [key_all[y,i] for i,y in enumerate(ys.values)]
+
+    return np.array(key_label)
+
+def pattern_score(ps, ys, ref_p):
+    assert len(ps) == len(ys)
+    assert len(ref_p) == len(set(ys))
+
+    return [match_ptn(p,ref_p[y]) for p,y in zip(ps,ys)]
+
+def match_ptn(p1, p2):
+    # TODO: weighted scoring
+    print(p1)
+    print(p2)
+    print(len(p1))
+    print(len(p2))
+    assert len(p1) == len(p2)
+
+    score = 0
+    for k,s in p1:
+        if (k,s) in p2:
+            score += 1
+        elif (k,not s) in p2:
+            score += 0.5
+
+    return score
